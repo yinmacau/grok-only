@@ -192,6 +192,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .panel__summary:hover { color: var(--color-primary); }
 details.panel > .panel__summary + * { margin-top: var(--space-3); }
+.model-summary__status { margin-left: var(--space-2); font-size: var(--font-size-xs); font-weight: 500; color: var(--color-text-muted); letter-spacing: 0; }
+.model-summary__status[data-configured="false"] { color: var(--color-danger); }
 
 /* ---------- 表单 ---------- */
 .field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
@@ -558,8 +560,9 @@ details.panel > .panel__summary + * { margin-top: var(--space-3); }
   <!-- ================= 左列：设置与输入 ================= -->
   <div class="app-col app-col--input">
 
-    <section class="panel panel--model" aria-labelledby="model-title">
-      <h2 class="panel__title" id="model-title">模型与密钥</h2>
+    <details class="panel panel--model" id="model-panel" open>
+      <summary class="panel__summary" id="model-summary"><span id="model-title">模型与密钥</span><span class="model-summary__status" id="model-status"></span></summary>
+      <div class="panel--model__body">
       <div class="field">
         <label class="field__label" for="provider">服务商</label>
         <select class="select" id="provider"></select>
@@ -608,7 +611,8 @@ details.panel > .panel__summary + * { margin-top: var(--space-3); }
         </ol>
         <p>注意：部分服务商对错误响应（如密钥错误 401）不带 CORS 头，浏览器也会显示为 Failed to fetch，所以请同时核对密钥。</p>
       </details>
-    </section>
+      </div>
+    </details>
 
     <section class="panel panel--options" aria-labelledby="options-title">
       <h2 class="panel__title" id="options-title">润色选项</h2>
@@ -618,17 +622,9 @@ details.panel > .panel__summary + * { margin-top: var(--space-3); }
           <input class="input" id="opt-name" type="text" autocomplete="off">
         </div>
         <div class="field">
-          <label class="field__label" for="opt-role">岗位/角色（可选）</label>
-          <input class="input" id="opt-role" type="text" autocomplete="off" placeholder="如：产品经理">
+          <label class="field__label" for="opt-period">周期（可选）</label>
+          <input class="input" id="opt-period" type="text" autocomplete="off" placeholder="如：2026-W46（11/10–11/16）">
         </div>
-      </div>
-      <div class="field">
-        <label class="field__label" for="opt-period">周期（可选）</label>
-        <input class="input" id="opt-period" type="text" autocomplete="off" placeholder="如：2026-W46（11/10–11/16）">
-      </div>
-      <div class="field">
-        <label class="field__label" for="opt-okr">老板/团队 OKR 或本周目标（可选）</label>
-        <textarea class="textarea" id="opt-okr" rows="3" placeholder="填写后，下周计划会显式对齐这些目标"></textarea>
       </div>
       <div class="field">
         <span class="field__label">润色程度</span>
@@ -636,20 +632,6 @@ details.panel > .panel__summary + * { margin-top: var(--space-3); }
           <label><input type="radio" name="opt-intensity" value="低"> 低</label>
           <label><input type="radio" name="opt-intensity" value="中" checked> 中</label>
           <label><input type="radio" name="opt-intensity" value="高"> 高</label>
-        </div>
-      </div>
-      <div class="field">
-        <span class="field__label">读者</span>
-        <div class="radio-group" role="radiogroup" aria-label="读者">
-          <label><input type="radio" name="opt-audience" value="直属领导" checked> 直属领导</label>
-          <label><input type="radio" name="opt-audience" value="跨部门"> 跨部门</label>
-        </div>
-      </div>
-      <div class="field">
-        <span class="field__label">语言</span>
-        <div class="radio-group" role="radiogroup" aria-label="语言">
-          <label><input type="radio" name="opt-lang" value="跟随草稿" checked> 跟随草稿</label>
-          <label><input type="radio" name="opt-lang" value="全文中文"> 全文中文</label>
         </div>
       </div>
     </section>
@@ -752,7 +734,7 @@ details.panel > .panel__summary + * { margin-top: var(--space-3); }
           <li>救火写成：问题 X / 我做了 Y / 避免了 Z</li>
           <li>计划外多接的活、救火必须单列；有明确产出或决策的会议可单列</li>
           <li>下周计划要有产出物、时间、评判标准和所需支持</li>
-          <li>语言默认跟随草稿（中英混写保持混写），也可改成全文中文</li>
+          <li>语言跟随草稿（中英混写保持混写），默认按直属领导的阅读习惯写</li>
         </ol>
         <details class="tips__examples">
           <summary>坏例子 → 好例子</summary>
@@ -817,7 +799,7 @@ var HISTORY_MAX_CHARS = 1500000; // 约 1.5M 字符，防止撑爆 localStorage
 var SYSTEM_PROMPT = "你是资深职场写作顾问与管理者助理，专门把员工的周报草稿，改写成领导愿意认真看、并能据此做判断的周报。\n\n你的读者是忙碌的管理者：第一行决定要不要继续读，前三行决定要不要追问。你要替领导做归纳，而不是替作者堆字。\n\n# 本次润色参数\n- 作者岗位/角色：{{ROLE}}\n- 润色程度：{{INTENSITY}}\n- 主要读者：{{AUDIENCE}}\n- 语言：{{LANG}}\n\n# 任务\n根据用户提供的周报草稿（以及可选的补充信息），输出一份 Markdown 周报。你是在「润色与重组」，不是文学创作，也不是编造业绩。\n若用户消息是「在上一版周报基础上按修改意见改写」：以用户给出的上一版正文为底稿（可能已被手工修改），只按修改意见调整，仍遵守本提示词的大纲与硬性规则，不得编造。\n\n# 输出结构（严格遵守，不得增删主章节或调换顺序）\n\n# 周报 | {姓名或岗位} | {周期}\n\n## 核心摘要\n用 2–3 句话写完：本周最重要成果、最重要风险或卡点、需要领导知道或拍板的事。必要时在句首标明整体状态【正常】【预警】或【延误】。坏消息必须出现在摘要里，不得藏到正文末尾。\n\n## 一、工作分析\n覆盖：完成了哪些工作、取得了哪些成绩、当前进展、计划实施情况。\n组织要求：\n- 按事项/项目归类，重要的在前。拆分力度随「润色程度」：低档只拆一眼就能分开的不同工作，一句话里拆不出独立动作则保持一条；中档把可独立识别的动作、产出、协作都拆开；高档在中档基础上进一步写过程。只有完全重复的同一件事才合并。拆分必须能在草稿中找到依据，禁止编造任务。\n- 有明确产出或决策的会议、对齐可以单列；没有产出的「开了会」不单列。\n- 计划外多接的工作、支援、救火必须单独成条，避免领导误判工作量。\n- 重点成果用压缩版 STAR（情境、任务、行动、结果）并量化；拒绝只写「做了啥」，要写「做成了啥」。\n- 对重点事项补充过程事实（高档应更充分；低档从简），建议使用如下结构（也可用等价的分项或表格）：\n  - 进展：现在到哪一步，完成了几分之几。\n  - 卡点：卡在何处；在等谁；已等几天；往返几轮。\n  - 耗时：草稿有则保留，没有则省略，绝不编造，也不要在正文中写【待补充】。\n- 每个关键结果尽量补一句事实：改了几版、协调了谁（草稿没有则不要编人名）。\n- 用数字说进度，例如「三块完成两块，第三块还差两天」——仅在草稿支持时写数字。\n\n## 二、问题分析\n覆盖：面临哪些挑战、存在什么风险、原因、如何预防、如何改进（分短期与长期）。\n每条按「遇到问题 → 分析根因 → 影响 → 已采取行动 → 方案/备选 → 需要的决策或支持」来写。\n救火事项写成：问题 X / 我做了 Y / 避免了 Z。\n不要诉苦，不要点名甩锅，也不要用「略有滞后」淡化明显延期。没有问题则写「本周无需要升级的风险」，不要编造问题。\n\n## 三、经验总结\n覆盖：提升了什么效率、优化了什么流程、简化了哪些步骤、拓展了什么渠道。\n只写可验证、可复用的事实（最好有前后对比）。没有可写的经验时，如实少写或不写空话，不要编造「方法论」。\n\n## 四、未来计划\n覆盖：下一步怎么做、工作如何安排、需要哪些支持、预期效果、评判标准。\n计划要具体、可执行：产出物、时间点、完成标准、依赖。尽量对齐老板 OKR 或已给出的团队目标；草稿没给 OKR 时不要编造，把这个缺口放到文末「待补充问题」，不要写进计划条目中间。\n需要的支持必须写清：需要谁、在什么时间前、做什么决策或提供什么资源。\n\n## 五、个人成长\n仅在草稿中包含成长/学习内容时输出本节；否则整节省略。\n写事实：学了什么、已应用到哪，或下周打算如何用。不要写自我评价。\n\n## 待补充问题\n把正文里需要但草稿没有提供的数字、日期、人名、结果或目标对应关系，用无序列表写在这里。正文中间不要插入【待补充】字样。若没有任何缺口，不要输出本节。文首标题缺姓名/岗位/周期时，标题可用【待补充：…】，并在本清单中列出。\n\n# 硬性规则\n1. 不编造任何数字、百分比、金额、日期、人名、职位、结论、承诺或未发生的工作。草稿没有的信息不要用「约」「大概估」编一个看起来合理的数，把它写入文末「待补充问题」，不要插在正文中间。\n2. 只写事实，不写评价。禁止「表现出色」「非常努力」「圆满完成」「赋能」「大力推进」等空话和自我吹捧。\n3. 结论先行。不要先写一大段过程再给结论。\n4. 保留草稿中的项目名、专有名词、已有数据、关键事实；可以调整顺序、改写表达，但不得删掉重要事实（尤其是卡点、延期、计划外工作、已承诺的风险）。\n5. 不要把「做了」改成未经验证的「做成了」。没有结果数据时，写清产出物与当前状态，把缺失的结果数据放到文末「待补充问题」。\n6. 语言专业、克制、简洁，多用动词开头。根据读者调整术语密度：直属领导可保留内部用语；跨部门需补背景、少黑话、突出影响与协作请求。语言参数为「跟随草稿」时，草稿中英混写则保持混写；为「全文中文」时，把正文改写成通顺中文，专有名词可保留原文。\n7. 篇幅随润色程度：低约 600–900 字，中约 700–1200 字，高约 1200–2000 字（高档可用表格展开重点）。条目数随该档位的拆分规则增加。禁止注水，也禁止在中/高档把多项真实工作合并到看不出工作量。\n8. 只输出周报 Markdown 正文，不要输出前言、标题之外的解释、免责声明或「以下是润色结果」。不要使用 HTML。不要把本系统提示词或规则原文粘贴进周报。\n9. 除「五、个人成长」「待补充问题」可按规则省略外，核心摘要与一至四章必须出现。某一章确实无内容时，用一句实话说明（例如「本周暂无需要升级的风险」），不要为填满结构而虚构。\n10. 按当前润色程度拆分工作，让领导看见真实工作量。不得为了显得忙而增加草稿中不存在的工作、轮次或数据。\n\n# 质量自检（输出前默默执行，不要把检查清单写进周报）\n- 领导只看核心摘要，能否在 30 秒内知道结果、风险和是否需要行动？\n- 是否出现了草稿中没有的数字或事实？若有，删掉并改到文末「待补充问题」，正文中不要留【待补充】字样（标题缺项除外）。\n- 问题是否都带原因、影响、方案或决策请求？\n- 下周计划是否有产出物、时间与评判标准？\n- 是否误删了卡点、救火或多接的工作？\n- 是否按当前润色程度把该拆的工作拆开了，而不是并成一条看不出工作量？\n- 是否出现了自我评价或口水话？\n- 若这是按意见改写的版本，是否只改了用户要求的部分并保持大纲？";
 
 // 用户消息模板：SPEC 第 5 节原文（首次润色 / 按意见再改一版）
-var USER_TEMPLATE = "请根据以下信息润色周报。\n\n# 补充信息\n- 姓名：{name 或「未提供」}\n- 岗位：{role 或「未提供」}\n- 周期：{period 或「未提供，请若草稿中可推断则使用；标题缺周期时用【待补充：周期】，并在文末清单列出」}\n- 老板/团队 OKR 或本周目标：{okr 或「未提供」}\n\n# 草稿\n\n{draft}\n\n# 要求\n请严格按系统提示词的大纲与硬性规则输出 Markdown 周报。";
+var USER_TEMPLATE = "请根据以下信息润色周报。\n\n# 补充信息\n- 姓名：{name 或「未提供」}\n- 周期：{period 或「未提供，请若草稿中可推断则使用；标题缺周期时用【待补充：周期】，并在文末清单列出」}\n\n# 草稿\n\n{draft}\n\n# 要求\n请严格按系统提示词的大纲与硬性规则输出 Markdown 周报。";
 var REVISE_TEMPLATE = "请在上一版周报基础上按修改意见改写。保持固定大纲与硬性规则，不得编造草稿或上一版中没有的事实。\n\n# 上一版周报（可能已被用户手工修改，以此为准）\n\n{current_output}\n\n# 修改意见\n\n{followup}\n\n# 原始草稿（供核对，不要倒退回未润色的流水账，除非修改意见要求）\n\n{draft}";
 
 // 示例草稿：SPEC 第 6.6 节原文
@@ -880,31 +862,27 @@ function normalizeIntensity(v) {
   if (v === '简洁') return '中';
   return '中';
 }
-function normalizeLang(v) {
-  return v === '全文中文' ? '全文中文' : '跟随草稿';
-}
-function normalizeAudience(v) {
-  return v === '跨部门' ? '跨部门' : '直属领导';
-}
+// 简化（2026-11-16）：不再提供岗位、读者、语言选项，提示词占位符用固定值
+var FIXED_ROLE = '未填写';
+var FIXED_AUDIENCE = '直属领导';
+var FIXED_LANG = '跟随草稿';
 
 function fillSystemPrompt(opts) {
   opts = opts || {};
   return SYSTEM_PROMPT
-    .split('{{ROLE}}').join(opts.role ? opts.role : '未填写')
+    .split('{{ROLE}}').join(FIXED_ROLE)
     .split('{{INTENSITY}}').join(normalizeIntensity(opts.intensity || opts.style))
-    .split('{{AUDIENCE}}').join(normalizeAudience(opts.audience))
-    .split('{{LANG}}').join(normalizeLang(opts.lang));
+    .split('{{AUDIENCE}}').join(FIXED_AUDIENCE)
+    .split('{{LANG}}').join(FIXED_LANG);
 }
 
 function buildUserMessage(opts, draft) {
   opts = opts || {};
   return USER_TEMPLATE
     .split('{name 或「未提供」}').join(opts.name || '未提供')
-    .split('{role 或「未提供」}').join(opts.role || '未提供')
     .split('{period 或「未提供，请若草稿中可推断则使用；标题缺周期时用【待补充：周期】，并在文末清单列出」}').join(
       opts.period || '未提供，请若草稿中可推断则使用；标题缺周期时用【待补充：周期】，并在文末清单列出'
     )
-    .split('{okr 或「未提供」}').join(opts.okr || '未提供')
     .split('{draft}').join(draft == null ? '' : String(draft));
 }
 
@@ -939,8 +917,8 @@ function localDateStr(d) {
   return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 
-/** 下载文件名：周报-{岗位或未命名}-{周期或日期}.md，去掉不合法字符 */
-function makeFilename(role, period, date) {
+/** 下载文件名（2026-11-16 起）：周报-{姓名或未命名}-{周期或日期}.md */
+function makeFilename(name, period, date) {
   function clean(s) {
     return String(s || '')
       .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '-')
@@ -950,7 +928,7 @@ function makeFilename(role, period, date) {
       .replace(/^[.\s-]+|[.\s-]+$/g, '')
       .slice(0, 60);
   }
-  var r = clean(role) || '未命名';
+  var r = clean(name) || '未命名';
   var p = clean(period) || localDateStr(date);
   return '周报-' + r + '-' + p + '.md';
 }
@@ -1616,7 +1594,8 @@ var $ = function (id) { return document.getElementById(id); };
 var el = {
   provider: $('provider'), baseUrl: $('base-url'), model: $('model'), modelOptions: $('model-options'),
   providerNote: $('provider-note'), apiKey: $('api-key'), toggleKey: $('toggle-key'), clearKey: $('clear-key'),
-  name: $('opt-name'), role: $('opt-role'), period: $('opt-period'), okr: $('opt-okr'),
+  name: $('opt-name'), period: $('opt-period'),
+  modelPanel: $('model-panel'), modelStatus: $('model-status'),
   draft: $('draft'), draftCount: $('draft-count'), fillSample: $('fill-sample'), clearDraft: $('clear-draft'),
   start: $('start'), stop: $('stop'), status: $('status'), notice: $('notice'),
   error: $('error'), errorTitle: $('error-title'), errorBody: $('error-body'), errorRawWrap: $('error-raw-wrap'), errorRaw: $('error-raw'),
@@ -1755,6 +1734,18 @@ function populateProviders() {
   });
 }
 
+function hasSavedKey(providerId) {
+  return !!(store.get(KEYS.apiKey(providerId)) || '').trim();
+}
+/** 收起标题：只显示服务商名与是否已配置密钥，绝不显示密钥内容 */
+function updateModelSummary() {
+  if (!el.modelStatus) return;
+  var p = PROVIDER_MAP[state.provider] || PROVIDER_MAP.deepseek;
+  var configured = !!el.apiKey.value.trim();
+  el.modelStatus.textContent = p.label + ' · ' + (configured ? '已配置密钥' : '未配置密钥');
+  el.modelStatus.dataset.configured = String(configured);
+}
+
 function loadProvider(id) {
   var p = PROVIDER_MAP[id] || PROVIDER_MAP.deepseek;
   state.provider = p.id;
@@ -1775,6 +1766,7 @@ function loadProvider(id) {
     var o = document.createElement('option'); o.value = mm; el.modelOptions.appendChild(o);
   });
   store.set(KEYS.provider, p.id);
+  updateModelSummary();
 }
 
 function saveBaseUrl() {
@@ -1790,6 +1782,7 @@ function saveModel() {
 function saveKey() {
   var v = el.apiKey.value.trim();
   if (v) store.set(KEYS.apiKey(state.provider), v); else store.remove(KEYS.apiKey(state.provider));
+  updateModelSummary();
 }
 
 /* ---------- 表单 ---------- */
@@ -1804,23 +1797,15 @@ function setRadio(name, value) {
 function getForm() {
   return {
     name: el.name.value.trim(),
-    role: el.role.value.trim(),
     period: el.period.value.trim(),
-    okr: el.okr.value.trim(),
-    intensity: normalizeIntensity(radioValue('opt-intensity')),
-    audience: normalizeAudience(radioValue('opt-audience')),
-    lang: normalizeLang(radioValue('opt-lang'))
+    intensity: normalizeIntensity(radioValue('opt-intensity'))
   };
 }
 function setForm(f) {
   f = f || {};
   el.name.value = f.name || '';
-  el.role.value = f.role || '';
   el.period.value = f.period || '';
-  el.okr.value = f.okr || '';
   setRadio('opt-intensity', normalizeIntensity(f.intensity || f.style));
-  setRadio('opt-audience', normalizeAudience(f.audience));
-  setRadio('opt-lang', normalizeLang(f.lang));
 }
 function saveForm() { store.set(KEYS.form, JSON.stringify(getForm())); }
 function saveDraft() { store.set(KEYS.draft, el.draft.value); updateDraftCount(); }
@@ -1853,12 +1838,8 @@ function sanitizeHistoryEntry(raw) {
     provider: raw.provider || '',
     model: raw.model || '',
     intensity: normalizeIntensity(raw.intensity || raw.style),
-    audience: normalizeAudience(raw.audience),
-    lang: normalizeLang(raw.lang),
-    role: raw.role || '',
     name: raw.name || '',
     period: raw.period || '',
-    okr: raw.okr || '',
     draft: raw.draft || '',
     output: raw.output || ''
   };
@@ -1894,7 +1875,7 @@ function renderHistory() {
     var info = document.createElement('div'); info.className = 'history__info';
     var meta = document.createElement('div'); meta.className = 'history__meta';
     var item = sanitizeHistoryEntry(h) || h;
-    meta.textContent = formatTime(item.createdAt) + ' · ' + (item.intensity || '中') + ' · ' + (item.lang || '跟随草稿') + ' · ' + (item.audience || '直属领导') + ' · ' + (item.model || '');
+    meta.textContent = formatTime(item.createdAt) + ' · ' + (item.intensity || '中') + ' · ' + (item.model || '');
     var snip = document.createElement('div'); snip.className = 'history__snippet';
     snip.textContent = String(h.draft || '').replace(/\s+/g, ' ').slice(0, 40);
     snip.title = snip.textContent;
@@ -1920,7 +1901,7 @@ function restoreHistory(id) {
   state.outputSaved = true;
   state.complete = !!state.output;
   state.resultMode = state.output ? 'edit' : 'preview';
-  state.lastRun = { role: item.role, period: item.period };
+  state.lastRun = { name: item.name, period: item.period };
   if (el.resultSource) el.resultSource.value = state.output;
   if (state.output) el.resultMd.innerHTML = renderMarkdown(state.output);
   el.resultMeta.hidden = false;
@@ -1958,7 +1939,7 @@ function copyText(text) {
 }
 function currentFilename() {
   var r = state.lastRun || getForm();
-  return makeFilename(r.role, r.period);
+  return makeFilename(r.name, r.period);
 }
 function downloadMarkdown() {
   var text = getCurrentOutput();
@@ -1993,14 +1974,19 @@ function startGeneration(kind, messages) {
   if (state.busy) return;
   hideError(); showNotice('');
   var v = validate();
-  if (v) { showError({ title: v.title, message: v.message }); setStatus('error'); if (v.focus) v.focus.focus(); return; }
+  if (v) {
+    showError({ title: v.title, message: v.message }); setStatus('error');
+    if (v.focus && el.modelPanel && el.modelPanel.contains(v.focus)) el.modelPanel.open = true;
+    if (v.focus) v.focus.focus();
+    return;
+  }
 
   var form = getForm();
   var draft = el.draft.value.trim();
   var providerId = state.provider;
   var model = el.model.value.trim() || (MOCK_MODE ? 'mock' : '');
   var url = MOCK_MODE ? 'mock://local/chat/completions' : buildUrl(el.baseUrl.value);
-  state.lastRun = { role: form.role, period: form.period };
+  state.lastRun = { name: form.name, period: form.period };
   state.lastMessages = messages;
   state.runKind = kind;
   state.output = '';
@@ -2010,7 +1996,7 @@ function startGeneration(kind, messages) {
   if (el.resultSource) el.resultSource.value = '';
   el.resultMd.innerHTML = '';
   el.resultMeta.hidden = false;
-  el.resultMeta.textContent = (MOCK_MODE ? '模拟模式' : (PROVIDER_MAP[providerId].label + ' / ' + model)) + ' · ' + form.intensity + ' · ' + form.lang + ' · ' + form.audience;
+  el.resultMeta.textContent = (MOCK_MODE ? '模拟模式' : (PROVIDER_MAP[providerId].label + ' / ' + model)) + ' · 润色程度' + form.intensity;
   renderOutput();
 
   var controller = new AbortController();
@@ -2043,8 +2029,8 @@ function startGeneration(kind, messages) {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       createdAt: new Date().toISOString(),
       provider: providerId, model: model,
-      intensity: form.intensity, audience: form.audience, lang: form.lang,
-      role: form.role, name: form.name, period: form.period, okr: form.okr,
+      intensity: form.intensity,
+      name: form.name, period: form.period,
       draft: draft, output: state.output
     });
     state.outputSaved = true;
@@ -2111,7 +2097,10 @@ function stopPolish() {
 
 /* ---------- 事件绑定 ---------- */
 function bind() {
-  el.provider.addEventListener('change', function () { loadProvider(el.provider.value); hideError(); });
+  el.provider.addEventListener('change', function () {
+    loadProvider(el.provider.value); hideError();
+    if (!hasSavedKey(state.provider)) el.modelPanel.open = true;
+  });
   el.baseUrl.addEventListener('input', saveBaseUrl);
   el.baseUrl.addEventListener('change', function () { el.baseUrl.value = el.baseUrl.value.trim(); saveBaseUrl(); });
   el.model.addEventListener('input', saveModel);
@@ -2132,11 +2121,12 @@ function bind() {
     store.remove(KEYS.apiKey(state.provider));
     el.apiKey.value = '';
     el.apiKey.type = 'password';
+    updateModelSummary();
     toast('已清除 ' + PROVIDER_MAP[state.provider].label + ' 的密钥');
   });
 
-  [el.name, el.role, el.period, el.okr].forEach(function (x) { x.addEventListener('input', saveForm); });
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="opt-intensity"], input[name="opt-audience"], input[name="opt-lang"]'), function (x) {
+  [el.name, el.period].forEach(function (x) { x.addEventListener('input', saveForm); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="opt-intensity"]'), function (x) {
     x.addEventListener('change', saveForm);
   });
 
@@ -2249,6 +2239,8 @@ function importHistoryFile(file) {
 function init() {
   populateProviders();
   loadProvider(store.get(KEYS.provider) || 'deepseek');
+  // 已存有当前服务商密钥时收起，没有时展开
+  el.modelPanel.open = !hasSavedKey(state.provider);
   setForm(store.getJSON(KEYS.form, {}));
   el.draft.value = store.get(KEYS.draft) || '';
   updateDraftCount();
@@ -2267,7 +2259,8 @@ window.WR = {
   buildUrl: buildUrl, buildMessages: buildMessages, buildReviseMessages: buildReviseMessages,
   buildUserMessage: buildUserMessage, buildReviseMessage: buildReviseMessage,
   buildRequestBody: buildRequestBody, fillSystemPrompt: fillSystemPrompt,
-  normalizeIntensity: normalizeIntensity, normalizeLang: normalizeLang,
+  normalizeIntensity: normalizeIntensity, FIXED_AUDIENCE: FIXED_AUDIENCE, FIXED_LANG: FIXED_LANG, FIXED_ROLE: FIXED_ROLE,
+  updateModelSummary: updateModelSummary,
   makeFilename: makeFilename, classifyError: classifyError, createSSEParser: createSSEParser, interpretSSEData: interpretSSEData,
   renderMarkdown: renderMarkdown, mdToPlain: mdToPlain, requestCompletion: requestCompletion, maskKey: maskKey,
   getCurrentOutput: getCurrentOutput, sanitizeHistoryEntry: sanitizeHistoryEntry,
